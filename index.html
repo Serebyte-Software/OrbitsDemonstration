@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>	
+	<head>
+		<title>
+			Orbit Model
+		</title>
+		
+		<style>
+			body {
+				background-color: grey;
+			}
+			
+			h1 {
+				color: white;
+				font-family: arial;
+			}
+			
+			h2 { 
+				color: white;
+				font-family: arial;
+			}
+		</style>
+	</head>
+	
+	<body>
+		<h1>
+			Orbits Demonstration
+		</h1>
+		
+		<br/>
+		
+		<h2>
+			This model should showcase how both stable and unstable orbits occur. When a satellite travels too fast, it will likely escape the pull of gravity. You can see this by decreasing gravitational strength or increasing the planet's distance from the Sun and increasing the planet's initial horizontal speed. If the planet is not travelling fast enough relative to the force of gravitational attraction, it will crash into the sun. In between these two extremes is how stable orbits are started. 
+		</h2>
+		
+		<br/>
+	
+		<canvas id="myCanvas" width="640" height="480" style="background: black"></canvas>
+	
+		<br/>
+		
+		<br/>
+		
+		<button id="startButton" onclick="startOrbit()">
+			Start Orbit
+		</button>
+		
+		<br/>
+		
+		<br/>
+		
+		<hr/>
+		
+		<h2>Adjust Settings</h2>
+		
+		<br/>
+		
+		<h2>
+			Planet's Distance From Sun
+		</h2>
+		
+		<input id="distanceFromSun" value="100" min="50" max="150" type="range"></input>
+		
+		<br/>
+		
+		<h2>
+			Planet's Horizontal Speed
+		</h2>
+		
+		<input id="horizontalSpeed" value="3" min="1" max="5" type="range"></input>
+		
+		<br/>
+		
+		<h2>
+			Strength of Gravity (Gravitational Constant)
+		</h2>
+		
+		<input id="strengthOfGravity" value="75" min="50" max="100" type="range"></input>
+		
+		<br/>
+		
+		<h2>
+			Mass of Planet
+		</h2>
+		
+		<input id="massOfPlanet" value="5" min="1" max="10" type="range"></input>
+		
+		<br/>
+		
+		<h2>
+			Mass of Star
+		</h2>
+		
+		<input id="massOfStar" value="5" min="1" max="10" type="range"></input>
+		
+		<br/>
+		
+		<script>
+			//load canvas 
+			var canvas = document.getElementById("myCanvas");
+			var ctx = canvas.getContext("2d");
+			
+			//get other elements 
+			var distanceFromSunInput= document.getElementById("distanceFromSun");
+			var horizontalSpeedInput = document.getElementById("horizontalSpeed");
+			var strengthOfGravityInput = document.getElementById("strengthOfGravity");
+			var massOfPlanetInput = document.getElementById("massOfPlanet");
+			var massOfStarInput = document.getElementById("massOfStar");
+			var startButton = document.getElementById("startButton");
+			
+			//define global variables
+			var phase = 0;
+			var planetInstance = null;
+			var particles = [];
+			var starRadius = 32;
+			
+			//create particles
+			class PlanetParticle {
+				constructor(){
+					this.x = planetInstance.x;
+					this.y = planetInstance.y;
+					this.alive = true;
+					this.radius = 4;
+					this.angle = (Math.random() * 360) / (Math.PI / 180);
+					this.speed = 2 + Math.random() * 4;
+					this.hspd = Math.cos(this.angle) * this.speed;
+					this.vspd = Math.sin(this.angle) * this.speed;
+					particles.push(this);
+				};
+				
+				update(){
+					this.x += this.hspd;
+					this.y += this.vspd;
+					
+					if(Math.sqrt(((canvas.width / 2 - this.x)**2) + ((canvas.height / 2 - this.y)**2)) < (this.radius + starRadius) * 0.75){
+						this.alive = false;
+					};
+				};
+				
+				render(){
+					if(this.alive == true){
+						//render circle
+						ctx.beginPath();
+						ctx.arc(this.x, this.y, 1, 0, 2 * Math.PI);
+						ctx.fillStyle = "blue";
+						ctx.fill();
+						ctx.closePath();
+					};
+				};	
+			}
+			
+			//create planet class 
+			class Planet {
+				constructor(){
+					this.x = canvas.width / 2;
+					this.y = canvas.height / 2 - distanceFromSunInput.value;
+					this.hspd = 0;
+					this.vspd = 0;
+					this.radius = 8;
+					this.angleOfGravity = 0;
+					this.gravityMagnitude = 0;
+					this.alive = true;
+				};
+				
+				update(){
+					//check phase 
+					if(phase == 0){
+						//adjust position 
+						this.y = canvas.height / 2 - distanceFromSunInput.value;
+						this.hspd = parseFloat(horizontalSpeedInput.value);
+						this.alive = true;
+						
+						//adjust hspd and vspd 
+						this.angleOfGravity = Math.atan2(canvas.height / 2 - this.y, canvas.width / 2 - this.x);
+						
+						//calculate magnitude of gravity 
+						this.gravityMagnitude = (parseFloat(strengthOfGravityInput.value) * parseFloat(massOfPlanetInput.value) * parseFloat(massOfStarInput.value))/(((canvas.width / 2 - this.x)**2) + ((canvas.height / 2 - this.y)**2));
+						
+					} else if(phase == 1){
+						if(this.alive == true){
+							//adjust hspd and vspd 
+							this.angleOfGravity = Math.atan2(canvas.height / 2 - this.y, canvas.width / 2 - this.x);
+							
+							//calculate magnitude of gravity 
+							this.gravityMagnitude = (parseFloat(strengthOfGravityInput.value) * parseFloat(massOfPlanetInput.value) * parseFloat(massOfStarInput.value))/(((canvas.width / 2 - this.x)**2) + ((canvas.height / 2 - this.y)**2));
+							
+							//resolve force into horizontal and vertical components
+							this.hspd += Math.cos(this.angleOfGravity) * this.gravityMagnitude;
+							this.vspd += Math.sin(this.angleOfGravity) * this.gravityMagnitude;
+							
+							//move 
+							this.x += this.hspd;
+							this.y += this.vspd;
+							
+							if(Math.sqrt(((canvas.width / 2 - this.x)**2) + ((canvas.height / 2 - this.y)**2)) < this.radius + starRadius){
+								this.alive = false;
+								
+								//create particles 
+								for(let i = 0; i < 1000; i++){
+									new PlanetParticle();
+								};
+							};
+						};
+					};
+				}
+				
+				render(){
+					if(this.alive == true){
+						//render circle
+						ctx.beginPath();
+						ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+						ctx.fillStyle = "blue";
+						ctx.fill();
+						ctx.closePath();
+						
+						//draw arrow for horizontalSpeed
+						ctx.beginPath();
+						ctx.moveTo(this.x, this.y);
+						ctx.lineTo(this.x + (this.hspd * 30), this.y + (this.vspd * 30));
+						ctx.strokeStyle = "white";
+						ctx.lineWidth = 2;
+						ctx.stroke();
+						ctx.closePath();
+						
+						ctx.beginPath();
+						ctx.moveTo(this.x, this.y);
+						ctx.lineTo(this.x + (Math.cos(this.angleOfGravity) * this.gravityMagnitude * 30), this.y + (Math.sin(this.angleOfGravity) * this.gravityMagnitude * 30));
+						ctx.strokeStyle = "red";
+						ctx.lineWidth = 2;
+						ctx.stroke();
+						ctx.closePath();
+					};
+				};
+			};
+			
+			//start orbit 
+			function startOrbit(){
+				//set phase 
+				if(phase == 0){
+					phase = 1;
+					
+					//hide inputs 
+					distanceFromSunInput.style.display = "none";
+					horizontalSpeedInput.style.display = "none";
+					strengthOfGravityInput.style.display = "none";
+					massOfPlanetInput.style.display = "none";
+					massOfStarInput.style.display = "none";
+				
+					startButton.innerHTML = "Reset";
+				} else {
+					phase = 0;
+					
+					//create new planet
+					planetInstance = new Planet();
+					particles = [];
+					
+					//show inputs 
+					distanceFromSunInput.style.display = "block";
+					horizontalSpeedInput.style.display = "block";
+					strengthOfGravityInput.style.display = "block";
+					massOfPlanetInput.style.display = "block";
+					massOfStarInput.style.display = "block";
+				
+					startButton.innerHTML = "Start Orbit";
+				};
+			};
+			
+			//main loop 
+			function mainLoop(){
+				//clear screen 
+				ctx.clearRect(0,0,canvas.width,canvas.height);
+				
+				//update planet instance 
+				planetInstance.update();
+				
+				//update particles 
+				for(i = 0; i < particles.length; i++){
+					particles[i].update();
+				};
+				
+				//filter particles 
+				particles = particles.filter(x => x.alive);
+				
+				//render planet 
+				planetInstance.render();
+				
+				//render particles 
+				for(i = 0; i < particles.length; i++){
+					particles[i].render();
+				};
+				
+				//render star 
+				ctx.beginPath();
+				ctx.arc(canvas.width / 2, canvas.height / 2, 32, 0, 2 * Math.PI);
+				ctx.fillStyle = "yellow";
+				ctx.fill();
+				ctx.closePath();
+				
+				if(planetInstance.alive){
+					let angleToPlanet = Math.atan2(planetInstance.y - canvas.height / 2, planetInstance.x - canvas.width / 2);
+				
+					//draw gravity from star
+					ctx.beginPath();
+					ctx.moveTo(canvas.width / 2, canvas.height / 2);
+					ctx.lineTo(canvas.width / 2 + (Math.cos(angleToPlanet) * planetInstance.gravityMagnitude * 30), canvas.height / 2 + (Math.sin(angleToPlanet) * planetInstance.gravityMagnitude * 30));
+					ctx.strokeStyle = "red";
+					ctx.lineWidth = 2;
+					ctx.stroke();
+					ctx.closePath();
+				};
+				
+				//call next frame 
+				requestAnimationFrame(mainLoop);
+			};
+			
+			//create planet instance 
+			planetInstance = new Planet();
+			
+			//start main loop 
+			mainLoop();
+		</script>
+	</body>
+</html>
